@@ -71,12 +71,17 @@ type Mutation {
   addNote(input: AddNoteInput!): Note!
   createApplication(input: CreateApplicationInput!): Application!
   deleteApplication(id: ID!): Boolean!
+
+  """Fails with CONFLICT while the company still has applications"""
+  deleteCompany(id: ID!): Boolean!
   deleteNote(id: ID!): Boolean!
   login(input: LoginInput!): AuthPayload!
   refreshToken(refreshToken: String!): AuthPayload!
   register(input: RegisterInput!): AuthPayload!
   updateApplication(id: ID!, input: UpdateApplicationInput!): Application!
   updateApplicationStatus(id: ID!, status: ApplicationStatus!): Application!
+  updateCompany(id: ID!, input: UpdateCompanyInput!): Company!
+  updateNote(input: UpdateNoteInput!): Note!
 }
 
 type Note {
@@ -84,6 +89,15 @@ type Note {
   content: String!
   createdAt: DateTime!
   id: ID!
+}
+
+type PaginatedApplications {
+  items: [Application!]!
+  skip: Int!
+  take: Int!
+
+  """Number of applications matching the filters (ignores take/skip)"""
+  total: Int!
 }
 
 type Query {
@@ -94,7 +108,7 @@ type Query {
     skip: Int! = 0
     status: ApplicationStatus
     take: Int! = 50
-  ): [Application!]!
+  ): PaginatedApplications!
   companies: [Company!]!
   me: User!
   stats: [StatusCount!]!
@@ -123,6 +137,18 @@ input UpdateApplicationInput {
   salaryMin: Int
   status: ApplicationStatus
   url: String
+}
+
+input UpdateCompanyInput {
+  name: String
+
+  """Pass null to clear the website"""
+  website: String
+}
+
+input UpdateNoteInput {
+  content: String!
+  id: ID!
 }
 
 type User {
