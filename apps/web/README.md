@@ -1,36 +1,91 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Job Tracker Web
 
-## Getting Started
+Next.js frontend for Job Tracker: dashboard, kanban board, application list and details, built on the GraphQL API in [`apps/api`](../api).
 
-First, run the development server:
+## Requirements
+
+- Node.js 24 (LTS)
+- The API running locally (see [apps/api/README.md](../api/README.md)), default `http://localhost:4000/graphql`
+
+## Getting started
 
 ```bash
+cd apps/web
+npm install
+cp .example.env .env.local
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000 and log in with the demo account from the API seed (`demo@jobtracker.dev` / `demo12345`) or sign up.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Script              | Description                                               |
+| ------------------- | --------------------------------------------------------- |
+| `npm run dev`       | Start the dev server                                      |
+| `npm run build`     | Production build                                          |
+| `npm run start`     | Run the production build                                  |
+| `npm run lint`      | ESLint                                                    |
+| `npm run typecheck` | Generate route types and run TypeScript                   |
+| `npm run codegen`   | Regenerate GraphQL types from `../api/src/schema.gql`     |
 
-## Learn More
+## Environment variables
 
-To learn more about Next.js, take a look at the following resources:
+| Variable          | Default                         | Description                                           |
+| ----------------- | ------------------------------- | ----------------------------------------------------- |
+| `API_GRAPHQL_URL` | `http://localhost:4000/graphql` | API endpoint, used only by the Next.js server         |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Pages
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Route                | Rendering                                   | Description                                         |
+| -------------------- | ------------------------------------------- | --------------------------------------------------- |
+| `/`                  | Server Component                            | Stats, applications-by-status chart, recent updates |
+| `/board`             | Server prefetch + client (React Query)      | Kanban board with drag and drop                     |
+| `/applications`      | Server prefetch + client                    | Search, status filter, pagination (state in URL)    |
+| `/applications/new`  | Client form                                 | Create an application (`?status=` preselects)       |
+| `/applications/[id]` | Server prefetch + client                    | Details, status, edit, delete, notes                |
+| `/companies`         | Server prefetch + client                    | Rename, set website, delete unused companies        |
+| `/login`, `/signup`  | Static                                      | Authentication                                      |
 
-## Deploy on Vercel
+## Architecture
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```
+Browser ──► Next.js ──────────────────────────► NestJS API (GraphQL)
+            ├─ proxy.ts           refreshes tokens, redirects to /login
+            ├─ /api/auth/*        login/signup/logout, sets httpOnly cookies
+            ├─ /api/graphql       forwards browser queries, adds the token
+            └─ Server Components  fetch directly with the token from the cookie
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Authentication (backend-for-frontend)
+
+- The API returns an access token (15 min) and a refresh token (7 days). The `/api/auth/*` route handlers store both in **httpOnly cookies**, so JavaScript in the browser can never read them.
+- **`proxy.ts`** runs before every request. When the access token is missing or about to expire, it calls the API's `refreshToken` mutation, passes the new token to the page being rendered and sets the new cookies. Without a valid session it redirects to `/login?next=…`.
+- Browser GraphQL requests go to **`/api/graphql`**, which attaches the token and forwards them to the API. Operations that return tokens (`login`, `register`, `refreshToken`) are rejected there, so tokens only ever travel through the cookie routes.
+- The client IP is forwarded as `X-Forwarded-For` so the API's per-IP rate limiting sees real users. Locally there is no proxy in front of Next.js, so all local users share one rate-limit bucket.
+
+### Data fetching
+
+- **GraphQL Code Generator** (client preset) generates types for every operation in `services/` from the API's schema file, giving end-to-end typing from the database to the component. Run `npm run codegen` after changing the API schema or an operation.
+- **Rendering:** with Cache Components, pages prerender a static shell (header, titles) and stream the user's data behind `<Suspense>`. Data views fetch on the server and pass the result to **React Query** through `<HydrationBoundary>`, so the first paint has data and the browser keeps managing it afterwards.
+- **Mutations** invalidate the affected queries. Status changes on the board are **optimistic** and roll back if the request fails.
+
+### Accessibility
+
+- Kanban cards can be moved with a mouse, touch, or keyboard (drag handle, with screen reader announcements), or with the status menu on each card.
+- Form labels are bound to their inputs, invalid fields set `aria-invalid`, and error messages are exposed to screen readers.
+
+## Project structure
+
+```
+app/
+├── (auth)/              # login, signup (public)
+├── (app)/               # authenticated pages with the navbar
+└── api/                 # auth route handlers and the GraphQL forwarder
+components/              # app components + ui/ (shadcn and form wrappers)
+gql/                     # generated by GraphQL Code Generator (do not edit)
+hooks/                   # React Query hooks per resource
+lib/                     # GraphQL clients, auth cookies, formatting, schemas
+services/                # GraphQL operations and query keys
+proxy.ts                 # token refresh and route protection
+```
