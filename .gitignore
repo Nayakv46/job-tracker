@@ -13,3 +13,9 @@ coverage/
 # Kubernetes secrets for local overlays
 infra/k8s/**/secrets/*.env
 !infra/k8s/**/secrets/*.example.env
+
+# Terraform: local variables, backend config and saved plans
+*.tfvars
+backend.hcl
+*.tfplan
+tfplan
