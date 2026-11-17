@@ -30,8 +30,12 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     }),
     GraphQLModule.forRoot<ApolloDriverConfig>({
       driver: ApolloDriver,
-      // Code-first: the SDL is generated from decorators (used later by the frontend codegen)
-      autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
+      // Code-first: the SDL is generated from decorators and written to src/schema.gql for the
+      // frontend codegen. In production (container, read-only source) it's kept in memory.
+      autoSchemaFile:
+        process.env.NODE_ENV === 'production'
+          ? true
+          : join(process.cwd(), 'src/schema.gql'),
       sortSchema: true,
       context: ({ req, res }: { req: unknown; res: unknown }) => ({ req, res }),
       validationRules: [depthLimit(7)],
