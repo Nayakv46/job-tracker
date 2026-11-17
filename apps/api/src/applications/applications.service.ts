@@ -10,6 +10,7 @@ import {
   UpdateApplicationInput,
 } from './dto/application.input.js';
 import { ApplicationsArgs } from './dto/applications.args.js';
+import { PaginatedApplications } from './models/paginated-applications.model.js';
 import { StatusCount } from './models/status-count.model.js';
 
 // Relations resolved in the same query (no N+1)
@@ -22,25 +23,35 @@ const applicationInclude = {
 export class ApplicationsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  findAll(userId: string, { status, search, take, skip }: ApplicationsArgs) {
+  async findAll(
+    userId: string,
+    { status, search, take, skip }: ApplicationsArgs,
+  ): Promise<PaginatedApplications> {
     const term = search?.trim();
+    const where: Prisma.ApplicationWhereInput = {
+      userId,
+      status,
+      ...(term && {
+        OR: [
+          { position: { contains: term, mode: 'insensitive' } },
+          { company: { name: { contains: term, mode: 'insensitive' } } },
+        ],
+      }),
+    };
 
-    return this.prisma.application.findMany({
-      where: {
-        userId,
-        status,
-        ...(term && {
-          OR: [
-            { position: { contains: term, mode: 'insensitive' } },
-            { company: { name: { contains: term, mode: 'insensitive' } } },
-          ],
-        }),
-      },
-      include: applicationInclude,
-      orderBy: { updatedAt: 'desc' },
-      take,
-      skip,
-    });
+    // Page and total count read in one transaction so they are consistent
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.application.findMany({
+        where,
+        include: applicationInclude,
+        orderBy: { updatedAt: 'desc' },
+        take,
+        skip,
+      }),
+      this.prisma.application.count({ where }),
+    ]);
+
+    return { items, total, take, skip };
   }
 
   async findOne(userId: string, id: string) {

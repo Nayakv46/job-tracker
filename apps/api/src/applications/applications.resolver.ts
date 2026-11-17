@@ -10,6 +10,7 @@ import {
 } from './dto/application.input.js';
 import { ApplicationsArgs } from './dto/applications.args.js';
 import { Application } from './models/application.model.js';
+import { PaginatedApplications } from './models/paginated-applications.model.js';
 import { StatusCount } from './models/status-count.model.js';
 
 @Resolver(() => Application)
@@ -17,7 +18,7 @@ import { StatusCount } from './models/status-count.model.js';
 export class ApplicationsResolver {
   constructor(private readonly applicationsService: ApplicationsService) {}
 
-  @Query(() => [Application])
+  @Query(() => PaginatedApplications)
   applications(@CurrentUser() user: AuthUser, @Args() args: ApplicationsArgs) {
     return this.applicationsService.findAll(user.id, args);
   }

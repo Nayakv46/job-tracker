@@ -16,12 +16,17 @@ describe('ApplicationsService', () => {
       update: vi.fn(),
       deleteMany: vi.fn(),
       groupBy: vi.fn(),
+      count: vi.fn(),
     },
     company: { upsert: vi.fn() },
+    $transaction: vi.fn(),
   };
 
   beforeEach(async () => {
     vi.resetAllMocks();
+    prisma.$transaction.mockImplementation((operations: Promise<unknown>[]) =>
+      Promise.all(operations),
+    );
 
     const moduleRef = await Test.createTestingModule({
       providers: [
@@ -57,6 +62,23 @@ describe('ApplicationsService', () => {
       // Relations are included in the same query (no N+1)
       expect(query.include).toHaveProperty('company', true);
       expect(query.include).toHaveProperty('notes');
+    });
+
+    it('returns the page together with the total count for the same filters', async () => {
+      const items = [{ id: 'app-1' }];
+      prisma.application.findMany.mockResolvedValue(items);
+      prisma.application.count.mockResolvedValue(42);
+
+      const result = await service.findAll(USER_ID, {
+        status: ApplicationStatus.OFFER,
+        take: 1,
+        skip: 5,
+      });
+
+      expect(result).toEqual({ items, total: 42, take: 1, skip: 5 });
+      expect(prisma.application.count).toHaveBeenCalledWith({
+        where: prisma.application.findMany.mock.calls[0][0].where,
+      });
     });
 
     it('omits the search filter when no phrase is given', async () => {
