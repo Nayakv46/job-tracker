@@ -33,7 +33,7 @@ Ingress (AWS Load Balancer Controller, HTTPS)
 
 ### Components
 
-- **Frontend:** Next.js (App Router), React, TypeScript, Apollo Client, Tailwind CSS
+- **Frontend:** Next.js (App Router), React, TypeScript, TanStack Query, Tailwind CSS
 - **Backend:** NestJS (code-first) with GraphQL (Apollo Driver), Prisma ORM
 - **Database:** PostgreSQL (Docker locally, Amazon RDS in AWS)
 - **Infrastructure (Terraform):** VPC, EKS, RDS, ECR, IAM, S3, Route 53 (optional)
@@ -87,16 +87,17 @@ npm i prisma @prisma/client
 
 ```bash
 npx create-next-app@latest web --typescript --tailwind --app
-npm i @apollo/client graphql
-npx graphql-codegen init
+npm i @tanstack/react-query graphql
+npm i -D @graphql-codegen/cli @graphql-codegen/client-preset
 ```
 
 ### Implementation
 
 - Pages: login/registration, application list, kanban board, application details, statistics dashboard.
-- GraphQL Code Generator produces types for queries and mutations from the API schema, giving end-to-end typing from database to component.
-- Auth token stored in an httpOnly cookie (not localStorage).
-- Rendering: SSR for data views, client components for interactive parts.
+- GraphQL Code Generator (client preset) produces typed documents for queries and mutations from the API schema, giving end-to-end typing from database to component.
+- Data fetching with TanStack Query (React Query) and a small `fetch`-based GraphQL client instead of Apollo Client, following the next-boilerplate convention. Mutations invalidate the affected queries; kanban status changes are optimistic.
+- Auth (backend-for-frontend): Next.js route handlers store the access and refresh tokens in httpOnly cookies (not localStorage); `proxy.ts` refreshes the access token and protects routes; browser GraphQL requests go through a `/api/graphql` route that attaches the token.
+- Rendering: Server Components prefetch data and hydrate React Query on the client; with Cache Components, pages prerender a static shell and stream user data behind `<Suspense>`.
 - Error and loading states, responsive layout, accessibility (a11y).
 
 ## 8. Containers
