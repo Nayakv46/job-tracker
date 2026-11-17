@@ -12,10 +12,11 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import Loader from "@/components/Loader/Loader";
 import type { ApplicationStatus } from "@/gql/graphql";
 import {
+  moveToStatus,
   useApplications,
   useUpdateApplicationStatus,
 } from "@/hooks/useApplications";
@@ -29,7 +30,16 @@ import KanbanColumn from "./KanbanColumn";
 const KanbanBoard = () => {
   const { data, isPending, error } = useApplications(BOARD_VARIABLES);
   const updateStatus = useUpdateApplicationStatus();
+  // Stable id so dnd-kit's generated aria attributes match between server and client
+  const dndContextId = useId();
   const [activeId, setActiveId] = useState<string | null>(null);
+  // Status change applied locally in the same render as the drop. The React Query cache is
+  // updated optimistically too, but that re-render lands a tick later, so without this the
+  // card would briefly reappear in its old column.
+  const [pendingMove, setPendingMove] = useState<{
+    id: string;
+    status: ApplicationStatus;
+  } | null>(null);
 
   const sensors = useSensors(
     // Small distance/delay so clicks and scrolling still work on cards
@@ -40,7 +50,12 @@ const KanbanBoard = () => {
     useSensor(KeyboardSensor),
   );
 
-  const items = useMemo(() => data?.applications.items ?? [], [data]);
+  const items = useMemo(() => {
+    const list = data?.applications.items ?? [];
+    return pendingMove
+      ? moveToStatus(list, pendingMove.id, pendingMove.status)
+      : list;
+  }, [data, pendingMove]);
   const byStatus = useMemo(() => {
     const groups = Object.fromEntries(
       STATUSES.map((status) => [status, [] as BoardApplication[]]),
@@ -71,9 +86,14 @@ const KanbanBoard = () => {
   };
 
   const changeStatus = (id: string, status: ApplicationStatus) => {
+    setPendingMove({ id, status });
     updateStatus.mutate(
       { id, status },
-      { onError: (err) => showErrorToast(getErrorMessage(err)) },
+      {
+        onError: (err) => showErrorToast(getErrorMessage(err)),
+        // By now the cache holds the result (or the rollback), so the local override can go
+        onSettled: () => setPendingMove(null),
+      },
     );
   };
 
@@ -83,9 +103,9 @@ const KanbanBoard = () => {
   const onDragEnd = ({ active, over }: DragEndEvent) => {
     setActiveId(null);
     const from = active.data.current?.status;
-    if (over && isApplicationStatus(over.id) && over.id !== from) {
-      changeStatus(String(active.id), over.id);
-    }
+    const target = over && isApplicationStatus(over.id) ? over.id : null;
+    // The card moves in this same render, so the overlay's drop animation flies to its new spot
+    if (target && target !== from) changeStatus(String(active.id), target);
   };
 
   const activeApplication = items.find((item) => item.id === activeId);
@@ -101,6 +121,7 @@ const KanbanBoard = () => {
       )}
 
       <DndContext
+        id={dndContextId}
         sensors={sensors}
         onDragStart={onDragStart}
         onDragEnd={onDragEnd}

@@ -4,6 +4,7 @@ import { useDroppable } from "@dnd-kit/core";
 import { Plus } from "lucide-react";
 import Link from "next/link";
 import type { ApplicationStatus } from "@/gql/graphql";
+import { useListReorderAnimation } from "@/hooks/useListReorderAnimation";
 import { STATUS_META } from "@/lib/status";
 import { cn } from "@/lib/utils";
 import KanbanCard, { type BoardApplication } from "./KanbanCard";
@@ -22,6 +23,8 @@ const KanbanColumn = ({
   const { setNodeRef, isOver } = useDroppable({ id: status });
   const meta = STATUS_META[status];
   const headingId = `column-${status}`;
+  // Cards slide up/down when one is dropped into or taken out of the column
+  const listRef = useListReorderAnimation<HTMLUListElement>(applications);
 
   return (
     <section
@@ -55,7 +58,7 @@ const KanbanColumn = ({
         </Link>
       </div>
 
-      <ul className="flex flex-1 flex-col gap-2">
+      <ul ref={listRef} className="relative flex flex-1 flex-col gap-2">
         {applications.map((application) => (
           <KanbanCard
             key={application.id}

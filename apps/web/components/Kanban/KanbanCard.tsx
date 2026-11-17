@@ -74,7 +74,11 @@ const KanbanCard = ({ application, onStatusChange }: KanbanCardProps) => {
   });
 
   return (
-    <li ref={setNodeRef} className={cn(isDragging && "opacity-40")}>
+    <li
+      ref={setNodeRef}
+      data-flip-id={application.id}
+      className={cn(isDragging && "opacity-40")}
+    >
       <KanbanCardContent
         application={application}
         onStatusChange={onStatusChange}

@@ -97,6 +97,18 @@ type StatusChange = { id: string; status: ApplicationStatus };
  * Changes the status with an optimistic update of every cached application list
  * (used by the kanban board), rolled back if the request fails.
  */
+/**
+ * Changes an item's status and moves it to the front. Lists are ordered by `updatedAt` desc,
+ * so this is where the server puts it, and the refetch doesn't reorder the list again.
+ */
+export function moveToStatus<
+  T extends { id: string; status: ApplicationStatus },
+>(items: T[], id: string, status: ApplicationStatus): T[] {
+  const moved = items.find((item) => item.id === id);
+  if (!moved) return items;
+  return [{ ...moved, status }, ...items.filter((item) => item.id !== id)];
+}
+
 export const useUpdateApplicationStatus = () => {
   const queryClient = useQueryClient();
   const listKey = [...applicationKeys.all, "list"];
@@ -117,9 +129,7 @@ export const useUpdateApplicationStatus = () => {
           data && {
             applications: {
               ...data.applications,
-              items: data.applications.items.map((item) =>
-                item.id === id ? { ...item, status } : item,
-              ),
+              items: moveToStatus(data.applications.items, id, status),
             },
           },
       );
