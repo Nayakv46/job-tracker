@@ -75,6 +75,10 @@ Browser ──► Next.js ──────────────────
 - Kanban cards can be moved with a mouse, touch, or keyboard (drag handle, with screen reader announcements), or with the status menu on each card.
 - Form labels are bound to their inputs, invalid fields set `aria-invalid`, and error messages are exposed to screen readers.
 
+## Docker
+
+`next.config.ts` sets `output: "standalone"`, so the build emits a self-contained server in `.next/standalone`. The [Dockerfile](Dockerfile) copies only that and `.next/static` into the runtime image, which runs `node server.js` as the non-root `node` user. `API_GRAPHQL_URL` is read at runtime, so the same image works in any environment. From the repository root: `docker compose up --build web`.
+
 ## Project structure
 
 ```

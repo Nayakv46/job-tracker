@@ -10,8 +10,8 @@ GraphQL API for the Job Tracker app, built with NestJS, Apollo (code-first), Pri
 ## Getting started
 
 ```bash
-# 1. Start PostgreSQL (from the repository root)
-docker compose up -d
+# 1. Start PostgreSQL only (from the repository root)
+docker compose up -d db
 
 # 2. Install dependencies (also generates the Prisma client)
 cd apps/api
@@ -62,6 +62,24 @@ npm run dev
 | `THROTTLE_LIMIT`      | `100`                   | Requests per minute per IP for the whole API                       |
 | `THROTTLE_AUTH_LIMIT` | `10`                    | Requests per minute per IP for `register`/`login`/`refreshToken`   |
 | `TRUST_PROXY`         | `0`                     | Reverse proxies in front of the API (set to `1` behind Ingress/ALB) |
+
+## Docker
+
+The [Dockerfile](Dockerfile) is multi-stage with two targets:
+
+| Target              | Contents                                                     | Used for                                   |
+| ------------------- | ------------------------------------------------------------ | ------------------------------------------ |
+| `runtime` (default) | Compiled `dist/`, production dependencies, Prisma client     | The API server (`node dist/main.js`)       |
+| `migrate`           | Full dependencies, Prisma CLI, migrations and seed script    | `prisma migrate deploy` before the API starts, or seeding |
+
+Both run as the non-root `node` user. The Prisma CLI is a dev dependency, so it isn't in the runtime image. In production (`NODE_ENV=production`) the GraphQL schema is built in memory instead of being written to `src/schema.gql`.
+
+```bash
+# From the repository root: builds both targets and runs migrate → api
+docker compose up --build api
+# Load demo data into the compose database
+docker compose run --rm migrate npx prisma db seed
+```
 
 ## Project structure
 

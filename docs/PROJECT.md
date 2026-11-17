@@ -104,6 +104,7 @@ npm i -D @graphql-codegen/cli @graphql-codegen/client-preset
 ## 8. Containers
 
 - Multi-stage Dockerfiles for `api` and `web` (build stage → lightweight runtime image, non-root user).
+- The API image has a separate `migrate` target (Prisma CLI + migrations) that runs `prisma migrate deploy` as a one-off job before the API starts (a compose service locally, a Kubernetes Job later).
 - Next.js configured with `output: 'standalone'`.
 - Full stack runnable with `docker compose up`.
 
