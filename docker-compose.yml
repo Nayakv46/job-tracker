@@ -1,3 +1,25 @@
+# Local development:  docker compose up -d db          (database only, apps run with npm run dev)
+# Full stack:         docker compose up --build        (web on :3000, API on :4000)
+#
+# The JWT secrets below are local-only defaults. Override them in a root .env file
+# (see .example.env); real deployments get them from Kubernetes Secrets.
+
+x-api-env: &api-env
+  environment:
+    DATABASE_URL: postgresql://postgres:postgres@db:5432/job_tracker?schema=public
+    JWT_SECRET: ${JWT_SECRET:-local-only-jwt-secret}
+    REFRESH_SECRET: ${REFRESH_SECRET:-local-only-refresh-secret}
+    JWT_EXPIRES_IN: 15m
+    REFRESH_EXPIRES_IN: 7d
+    PORT: 4000
+    FRONTEND_URL: http://localhost:${WEB_PORT:-3000}
+    THROTTLE_LIMIT: 100
+    THROTTLE_AUTH_LIMIT: 10
+    # Don't trust X-Forwarded-For here: nothing sits in front of the web container to set it,
+    # so clients could spoof it to dodge rate limits. All local users share one bucket.
+    # Behind a load balancer that appends the client IP (ALB/Ingress), use 1.
+    TRUST_PROXY: 0
+
 services:
   db:
     image: postgres:16
@@ -16,6 +38,41 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+
+  # Applies pending Prisma migrations, then exits
+  migrate:
+    <<: *api-env
+    build:
+      context: ./apps/api
+      target: migrate
+    image: job-tracker-api-migrate:local
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    <<: *api-env
+    build: ./apps/api
+    image: job-tracker-api:local
+    restart: unless-stopped
+    ports:
+      - "${API_PORT:-4000}:4000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  web:
+    build: ./apps/web
+    image: job-tracker-web:local
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    environment:
+      API_GRAPHQL_URL: http://api:4000/graphql
+    depends_on:
+      api:
+        condition: service_healthy
 
 volumes:
   postgres_data:
