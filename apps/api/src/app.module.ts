@@ -13,6 +13,7 @@ import { formatGraphQLError } from './graphql-error.formatter.js';
 import { HealthController } from './health/health.controller.js';
 import { NotesModule } from './notes/notes.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
+import { ThrottlingModule } from './throttling/throttling.module.js';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
@@ -37,6 +38,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
       formatError: formatGraphQLError,
     }),
     PrismaModule,
+    ThrottlingModule,
     AuthModule,
     CompaniesModule,
     ApplicationsModule,
