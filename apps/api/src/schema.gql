@@ -1,0 +1,132 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+input AddNoteInput {
+  applicationId: ID!
+  content: String!
+}
+
+type Application {
+  appliedAt: DateTime
+  company: Company!
+  createdAt: DateTime!
+  id: ID!
+  notes: [Note!]!
+  position: String!
+  salaryMax: Int
+  salaryMin: Int
+  status: ApplicationStatus!
+  updatedAt: DateTime!
+  url: String
+}
+
+enum ApplicationStatus {
+  APPLIED
+  INTERVIEW
+  OFFER
+  REJECTED
+  WISHLIST
+}
+
+type AuthPayload {
+  accessToken: String!
+  refreshToken: String!
+  user: User!
+}
+
+type Company {
+  createdAt: DateTime!
+  id: ID!
+  name: String!
+  website: String
+}
+
+input CreateApplicationInput {
+  appliedAt: DateTime
+
+  """
+  Company name; an existing company with this name is reused, otherwise it is created
+  """
+  companyName: String!
+  companyWebsite: String
+  position: String!
+  salaryMax: Int
+  salaryMin: Int
+  status: ApplicationStatus
+  url: String
+}
+
+"""
+A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
+"""
+scalar DateTime
+
+input LoginInput {
+  email: String!
+  password: String!
+}
+
+type Mutation {
+  addNote(input: AddNoteInput!): Note!
+  createApplication(input: CreateApplicationInput!): Application!
+  deleteApplication(id: ID!): Boolean!
+  deleteNote(id: ID!): Boolean!
+  login(input: LoginInput!): AuthPayload!
+  refreshToken(refreshToken: String!): AuthPayload!
+  register(input: RegisterInput!): AuthPayload!
+  updateApplication(id: ID!, input: UpdateApplicationInput!): Application!
+  updateApplicationStatus(id: ID!, status: ApplicationStatus!): Application!
+}
+
+type Note {
+  applicationId: ID!
+  content: String!
+  createdAt: DateTime!
+  id: ID!
+}
+
+type Query {
+  application(id: ID!): Application!
+  applications(
+    """Case-insensitive search by position or company name"""
+    search: String
+    skip: Int! = 0
+    status: ApplicationStatus
+    take: Int! = 50
+  ): [Application!]!
+  companies: [Company!]!
+  me: User!
+  stats: [StatusCount!]!
+}
+
+input RegisterInput {
+  email: String!
+  password: String!
+}
+
+type StatusCount {
+  count: Int!
+  status: ApplicationStatus!
+}
+
+input UpdateApplicationInput {
+  appliedAt: DateTime
+
+  """
+  Company name; an existing company with this name is reused, otherwise it is created
+  """
+  companyName: String
+  companyWebsite: String
+  position: String
+  salaryMax: Int
+  salaryMin: Int
+  status: ApplicationStatus
+  url: String
+}
+
+type User {
+  createdAt: DateTime!
+  email: String!
+  id: ID!
+}

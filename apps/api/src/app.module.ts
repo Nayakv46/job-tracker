@@ -6,9 +6,12 @@ import { GraphQLModule } from '@nestjs/graphql';
 import { createObserveModule } from '@nestjs/observe';
 import depthLimit from 'graphql-depth-limit';
 import { join } from 'node:path';
+import { ApplicationsModule } from './applications/applications.module.js';
 import { AuthModule } from './auth/auth.module.js';
+import { CompaniesModule } from './companies/companies.module.js';
 import { formatGraphQLError } from './graphql-error.formatter.js';
 import { HealthController } from './health/health.controller.js';
+import { NotesModule } from './notes/notes.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
@@ -35,6 +38,9 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     }),
     PrismaModule,
     AuthModule,
+    CompaniesModule,
+    ApplicationsModule,
+    NotesModule,
   ],
   controllers: [HealthController],
   providers: [
