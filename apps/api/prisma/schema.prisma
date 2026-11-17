@@ -1,0 +1,85 @@
+// Prisma schema for the Job Tracker API.
+// Models use PascalCase/camelCase in code and map to snake_case tables/columns in the database.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ApplicationStatus {
+  WISHLIST
+  APPLIED
+  INTERVIEW
+  OFFER
+  REJECTED
+
+  @@map("application_status")
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+
+  companies    Company[]
+  applications Application[]
+
+  @@map("users")
+}
+
+model Company {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  name      String
+  website   String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  applications Application[]
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@map("companies")
+}
+
+model Application {
+  id        String            @id @default(uuid()) @db.Uuid
+  userId    String            @map("user_id") @db.Uuid
+  companyId String            @map("company_id") @db.Uuid
+  position  String
+  url       String?
+  salaryMin Int?              @map("salary_min")
+  salaryMax Int?              @map("salary_max")
+  status    ApplicationStatus @default(WISHLIST)
+  appliedAt DateTime?         @map("applied_at")
+  createdAt DateTime          @default(now()) @map("created_at")
+  updatedAt DateTime          @default(now()) @updatedAt @map("updated_at")
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  notes   Note[]
+
+  @@index([userId])
+  @@index([userId, status])
+  @@index([companyId])
+  @@map("applications")
+}
+
+model Note {
+  id            String   @id @default(uuid()) @db.Uuid
+  applicationId String   @map("application_id") @db.Uuid
+  content       String
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId])
+  @@map("notes")
+}

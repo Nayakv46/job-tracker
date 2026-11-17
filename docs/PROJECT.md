@@ -187,7 +187,7 @@ type Application {
 }
 
 type Query {
-  applications(status: ApplicationStatus, search: String, take: Int, skip: Int): [Application!]!
+  applications(status: ApplicationStatus, search: String, take: Int, skip: Int): PaginatedApplications!
   application(id: ID!): Application
   stats: [StatusCount!]!
 }

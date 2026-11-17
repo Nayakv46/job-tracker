@@ -4,3 +4,8 @@ node_modules
 .terraform
 *.tfstate*
 reference/
+
+# build output
+dist/
+*.tsbuildinfo
+coverage/
