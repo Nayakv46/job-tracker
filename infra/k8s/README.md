@@ -1,6 +1,6 @@
 # Kubernetes
 
-Kustomize manifests for Job Tracker. The same base is used locally (kind) and, later, on EKS.
+Kustomize manifests for Job Tracker. The same base is used locally (kind) and on EKS.
 
 ```
 infra/k8s/
@@ -10,7 +10,8 @@ infra/k8s/
 │   ├── ingress.yaml      # public route to the web app only
 │   └── kustomization.yaml  # labels, api-config ConfigMap
 ├── overlays/
-│   └── local/            # kind: namespace, PostgreSQL StatefulSet, secrets, ingress-nginx
+│   ├── local/            # kind: namespace, PostgreSQL StatefulSet, secrets, ingress-nginx
+│   └── eks/              # EKS: ECR images, secrets from Secrets Manager, ALB Ingress
 └── kind/cluster.yaml     # local cluster with the ingress on http://localhost:8080
 ```
 
@@ -76,6 +77,15 @@ Kubernetes 1.35+ refuses to start on cgroup v1 hosts. Check with `docker info | 
         kind: KubeletConfiguration
         failCgroupV1: false
 ```
+
+## Deploy to EKS
+
+The infrastructure comes from [`infra/terraform`](../terraform/README.md), which also creates the `job-tracker` namespace, the AWS Load Balancer Controller and the External Secrets Operator. The `eks` overlay differs from `local` in these ways:
+
+- Images come from ECR, tagged with the git SHA (`kustomize edit set image`, see the Terraform README).
+- `api-secrets` is created by an `ExternalSecret` from the Secrets Manager secret `job-tracker-dev/api`. There's no `secretGenerator`, so a new secret value needs `kubectl rollout restart deployment/api`.
+- The Ingress uses the `alb` class: an internet-facing ALB that sends traffic straight to the web pods (`target-type: ip`). The ALB appends the client IP to `X-Forwarded-For`, so `TRUST_PROXY=1` still applies.
+- There's no PostgreSQL in the cluster; `DATABASE_URL` points to RDS over TLS.
 
 ## Known limitations
 
