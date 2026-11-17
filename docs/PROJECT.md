@@ -67,18 +67,19 @@ Node.js (LTS), Docker, Git, kubectl, Terraform, AWS CLI, Helm, and kind or minik
 
 ```bash
 npm i @nestjs/graphql @nestjs/apollo @apollo/server graphql
-npm i @nestjs/jwt @nestjs/passport passport passport-jwt bcrypt class-validator class-transformer
+npm i @nestjs/jwt argon2 class-validator class-transformer @nestjs/throttler graphql-depth-limit
 npm i prisma @prisma/client
 ```
 
 ### Implementation
 
-- PostgreSQL runs locally via `docker-compose.yml` (`postgres:16` image, volume, port 5432).
+- PostgreSQL runs locally via `docker-compose.yml` (`postgres:16` image, volume, host port 5434 → container 5432).
 - Prisma schema defines `User`, `Company`, `Application`, `Note` (see [Data Model](#12-data-model)); migrations via `npx prisma migrate dev`.
 - `GraphQLModule` configured with `autoSchemaFile` (code-first); `ApplicationsModule` with resolver and service.
-- Auth module: registration, login, `JwtAuthGuard`, `@CurrentUser()` decorator. All application queries are scoped by `userId`.
-- Input validation with `class-validator`; pagination and filters (status, search phrase).
-- Unit tests for services; e2e tests for GraphQL (supertest).
+- Auth module: registration, login and token refresh (access + refresh JWTs via `@nestjs/jwt`), passwords hashed with argon2id, `GqlAuthGuard` and `@CurrentUser()` decorator. All application queries are scoped by `userId`.
+- Input validation with `class-validator`; pagination (`{ items, total, take, skip }`) and filters (status, search phrase).
+- Rate limiting with `@nestjs/throttler` (stricter limit on auth mutations) and GraphQL query depth limiting.
+- Unit tests for services; e2e tests for GraphQL (Vitest + supertest).
 - `/health` endpoint for Kubernetes probes.
 
 ## 7. Frontend (Next.js + React + TypeScript)
@@ -209,7 +210,8 @@ N+1 handling for `company` and `notes` relations: DataLoader or Prisma `include`
 - No secrets in the repository
 - RDS in a private subnet
 - Least-privilege IAM
-- Password hashing with bcrypt
+- Password hashing with argon2id
+- Tokens kept in httpOnly cookies on the frontend, never exposed to browser JavaScript
 - Rate limiting and GraphQL query depth limiting
 
 ## 15. Cost Considerations
