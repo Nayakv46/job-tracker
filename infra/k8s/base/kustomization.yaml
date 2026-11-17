@@ -1,0 +1,33 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Environment-independent resources. Overlays add the namespace, image tags, secrets,
+# the database (local) and the ingress class.
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: job-tracker
+
+resources:
+  - api/deployment.yaml
+  - api/service.yaml
+  - api/hpa.yaml
+  - web/deployment.yaml
+  - web/service.yaml
+  - web/hpa.yaml
+  - ingress.yaml
+
+# Non-secret API settings. The generated name has a content hash, so changing a value
+# rolls out new pods. Secrets (DATABASE_URL, JWT_SECRET, REFRESH_SECRET) come from the
+# overlay as `api-secrets`.
+configMapGenerator:
+  - name: api-config
+    literals:
+      - PORT=4000
+      - JWT_EXPIRES_IN=15m
+      - REFRESH_EXPIRES_IN=7d
+      - THROTTLE_LIMIT=100
+      - THROTTLE_AUTH_LIMIT=10
+      # The API's only client is the web pod, which forwards the X-Forwarded-For header
+      # set by the ingress controller, so trust exactly one hop
+      - TRUST_PROXY=1
+      - FRONTEND_URL=http://localhost:3000

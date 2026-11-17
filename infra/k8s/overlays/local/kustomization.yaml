@@ -1,0 +1,43 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Local cluster (kind): in-cluster PostgreSQL, images loaded with `kind load`,
+# ingress-nginx on http://localhost:8080
+namespace: job-tracker
+
+resources:
+  - namespace.yaml
+  - ../../base
+  - postgres.yaml
+
+images:
+  - name: job-tracker-api
+    newTag: local
+  - name: job-tracker-api-migrate
+    newTag: local
+  - name: job-tracker-web
+    newTag: local
+
+configMapGenerator:
+  - name: api-config
+    behavior: merge
+    literals:
+      - FRONTEND_URL=http://localhost:8080
+
+# Copy secrets/*.example.env to secrets/*.env first (the .env files are git-ignored)
+secretGenerator:
+  - name: api-secrets
+    envs:
+      - secrets/api.env
+  - name: postgres-secrets
+    envs:
+      - secrets/postgres.env
+
+patches:
+  - target:
+      kind: Ingress
+      name: job-tracker
+    patch: |-
+      - op: add
+        path: /spec/ingressClassName
+        value: nginx
