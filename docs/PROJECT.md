@@ -166,8 +166,15 @@ Offline checks: `terraform fmt -check`, `terraform validate`, `tflint`, and `ter
 
 ## 11. CI/CD (GitHub Actions)
 
-- **CI** (every pull request): lint, tests, build, `terraform fmt -check`, `terraform validate`.
-- **CD** (merge to `main`): build images → push to ECR (OIDC authentication, no stored keys) → deploy to EKS.
+Workflows in `.github/workflows`. Third-party actions are pinned to commit SHAs.
+
+- **CI** (`ci.yml`, every pull request and push to `main`). Each job runs only when its files change, and a final `ci` job gives branch protection a single required check.
+  - **api:** lint, build, unit tests, then migrations and e2e tests against a PostgreSQL service container; fails if `src/schema.gql` is out of date.
+  - **web:** fails if the codegen output in `gql/` is out of date; lint, type check, build.
+  - **docker:** builds the `api`, `api-migrate` and `web` images (no push).
+  - **terraform:** `fmt -check`, `validate`, `terraform test` (mocked providers), tflint.
+  - **k8s:** builds both Kustomize overlays and validates them with kubeconform (including the External Secrets CRDs).
+- **CD** (`cd.yml`, after CI passes on `main`, or run manually): assumes the Terraform-managed IAM role through OIDC (no stored keys), builds and pushes the three images to ECR tagged with the commit SHA, then `kubectl apply -k infra/k8s/overlays/eks` and waits for the rollout. It only runs when the repository variable `AWS_DEPLOY_ROLE_ARN` is set, so merges don't fail while the AWS environment is torn down.
 - Optional: GitOps with Argo CD instead of pipeline-based deploy.
 
 ## 12. Data Model

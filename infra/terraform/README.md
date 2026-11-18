@@ -115,6 +115,15 @@ IMAGE=$REGISTRY/job-tracker/api-migrate:$TAG
 kubectl -n job-tracker run seed --rm -i --restart=Never --image=$IMAGE --overrides='{"spec":{"securityContext":{"runAsNonRoot":true,"runAsUser":1000,"seccompProfile":{"type":"RuntimeDefault"}},"containers":[{"name":"seed","image":"'$IMAGE'","command":["npx","prisma","db","seed"],"envFrom":[{"secretRef":{"name":"api-secrets"}}],"env":[{"name":"HOME","value":"/tmp"},{"name":"CHECKPOINT_DISABLE","value":"1"}],"securityContext":{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]}}}]}}'
 ```
 
+## Continuous deployment
+
+After the first apply, let GitHub Actions deploy every commit on `main` that passes CI ([`cd.yml`](../../.github/workflows/cd.yml)). It does steps 3 and 4 above using the `github-actions` IAM role.
+
+1. In the repository settings (Settings → Secrets and variables → Actions → Variables), set `AWS_DEPLOY_ROLE_ARN` to `terraform output -raw github_actions_role_arn`. `AWS_REGION` and `EKS_CLUSTER_NAME` are optional and default to `eu-central-1` and `job-tracker-dev`.
+2. Push to `main`, or start the CD workflow manually from the Actions tab (on `main`; the role doesn't trust other branches).
+
+Delete the variable before `terraform destroy`, so merges don't try to deploy to a cluster that's gone. Seeding demo data stays a manual step.
+
 ## Rotating secrets
 
 Increase `secrets_version` (e.g. `-var secrets_version=2`) and apply. This writes a new database password and new JWT secrets, which logs every user out. Then make the pods pick up the new values: External Secrets refreshes the Secret within an hour, or right away with `kubectl -n job-tracker annotate externalsecret api-secrets force-sync=$(date +%s) --overwrite`, and then:
