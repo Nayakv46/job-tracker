@@ -1,7 +1,9 @@
 "use client";
 
 import {
+  hashKey,
   keepPreviousData,
+  type QueryKey,
   useMutation,
   useQuery,
   useQueryClient,
@@ -51,13 +53,19 @@ export const useApplication = (id: string) => {
 
 // Mutations
 
+/** Refetches application and company queries, optionally skipping one query. */
 const useInvalidateApplications = () => {
   const queryClient = useQueryClient();
-  return () =>
-    Promise.all([
-      queryClient.invalidateQueries({ queryKey: applicationKeys.all }),
+  return (exclude?: QueryKey) => {
+    const excludedHash = exclude && hashKey(exclude);
+    return Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: applicationKeys.all,
+        predicate: (query) => query.queryHash !== excludedHash,
+      }),
       queryClient.invalidateQueries({ queryKey: companyKeys.all }),
     ]);
+  };
 };
 
 export const useCreateApplication = () => {
@@ -65,7 +73,7 @@ export const useCreateApplication = () => {
   return useMutation({
     mutationFn: (input: CreateApplicationInput) =>
       graphqlRequest(CreateApplicationMutation, { input }),
-    onSuccess: invalidate,
+    onSuccess: () => invalidate(),
   });
 };
 
@@ -74,20 +82,20 @@ export const useUpdateApplication = (id: string) => {
   return useMutation({
     mutationFn: (input: UpdateApplicationInput) =>
       graphqlRequest(UpdateApplicationMutation, { id, input }),
-    onSuccess: invalidate,
+    onSuccess: () => invalidate(),
   });
 };
 
 export const useDeleteApplication = () => {
-  const queryClient = useQueryClient();
   const invalidate = useInvalidateApplications();
   return useMutation({
     mutationFn: (id: string) =>
       graphqlRequest(DeleteApplicationMutation, { id }),
-    onSuccess: (_data, id) => {
-      queryClient.removeQueries({ queryKey: applicationKeys.detail(id) });
-      return invalidate();
-    },
+    // Leave the deleted application's own query alone: the details page is still mounted
+    // until the caller navigates away, and refetching (or removing) that query would load
+    // the deleted application, get "not found" and hit the error boundary. The entry is
+    // garbage-collected once unused; revisiting the URL is a server-side 404.
+    onSuccess: (_data, id) => invalidate(applicationKeys.detail(id)),
   });
 };
 

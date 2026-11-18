@@ -106,6 +106,7 @@ npm i -D @graphql-codegen/cli @graphql-codegen/client-preset
 - Auth (backend-for-frontend): Next.js route handlers store the access and refresh tokens in httpOnly cookies (not localStorage); `proxy.ts` refreshes the access token and protects routes; browser GraphQL requests go through a `/api/graphql` route that attaches the token.
 - Rendering: Server Components prefetch data and hydrate React Query on the client; with Cache Components, pages prerender a static shell and stream user data behind `<Suspense>`.
 - Error and loading states, responsive layout, accessibility (a11y).
+- End-to-end tests with Playwright (`apps/web/e2e`) against the full Docker stack: each test signs up its own user, so tests run in parallel; a test fails on browser console errors.
 
 ## 8. Containers
 
@@ -172,6 +173,7 @@ Workflows in `.github/workflows`. Third-party actions are pinned to commit SHAs.
   - **api:** lint, build, unit tests, then migrations and e2e tests against a PostgreSQL service container; fails if `src/schema.gql` is out of date.
   - **web:** fails if the codegen output in `gql/` is out of date; lint, type check, build.
   - **docker:** builds the `api`, `api-migrate` and `web` images (no push).
+  - **e2e:** starts the stack with Docker Compose and runs the Playwright tests; uploads the report and traces on failure.
   - **terraform:** `fmt -check`, `validate`, `terraform test` (mocked providers), tflint.
   - **k8s:** builds both Kustomize overlays and validates them with kubeconform (including the External Secrets CRDs).
 - **CD** (`cd.yml`, after CI passes on `main`, or run manually): assumes the Terraform-managed IAM role through OIDC (no stored keys), builds and pushes the three images to ECR tagged with the commit SHA, then `kubectl apply -k infra/k8s/overlays/eks` and waits for the rollout. It only runs when the repository variable `AWS_DEPLOY_ROLE_ARN` is set, so merges don't fail while the AWS environment is torn down.
@@ -245,5 +247,4 @@ N+1 handling for `company` and `notes` relations: DataLoader or Prisma `include`
 - GraphQL subscriptions (live updates)
 - Redis cache (ElastiCache)
 - Importing offers from a URL (scraping or API integration)
-- E2E tests with Playwright
 - Karpenter instead of cluster-autoscaler

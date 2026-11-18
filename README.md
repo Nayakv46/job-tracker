@@ -40,5 +40,5 @@ See the app READMEs for scripts, environment variables and architecture.
 
 GitHub Actions in [`.github/workflows`](.github/workflows):
 
-- **CI** runs on pull requests and on `main`: lint, tests (including e2e against PostgreSQL), builds, Docker images, Terraform checks and Kubernetes manifest validation. Only the jobs for changed folders run; the `ci` job is the one to require in branch protection.
+- **CI** runs on pull requests and on `main`: lint, tests (including API e2e tests against PostgreSQL and Playwright browser tests against the Docker stack), builds, Docker images, Terraform checks and Kubernetes manifest validation. Only the jobs for changed folders run; the `ci` job is the one to require in branch protection.
 - **CD** deploys `main` to EKS after CI passes. It's off until the AWS environment exists, see [Continuous deployment](infra/terraform/README.md#continuous-deployment).

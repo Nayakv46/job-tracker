@@ -28,6 +28,8 @@ Open http://localhost:3000 and log in with the demo account from the API seed (`
 | `npm run lint`      | ESLint                                                    |
 | `npm run typecheck` | Generate route types and run TypeScript                   |
 | `npm run codegen`   | Regenerate GraphQL types from `../api/src/schema.gql`     |
+| `npm run test:e2e`  | Playwright browser tests against a running stack          |
+| `npm run test:e2e:ui` | The same in Playwright's UI mode (watch, time travel)   |
 
 ## Environment variables
 
@@ -74,6 +76,29 @@ Browser ──► Next.js ──────────────────
 
 - Kanban cards can be moved with a mouse, touch, or keyboard (drag handle, with screen reader announcements), or with the status menu on each card.
 - Form labels are bound to their inputs, invalid fields set `aria-invalid`, and error messages are exposed to screen readers.
+
+## End-to-end tests
+
+Playwright tests in [`e2e/`](e2e) drive a real browser against the whole stack: sign up and log in, creating, editing and deleting applications, notes, kanban drag and drop, search and filters, the dashboard, companies and the mobile layout.
+
+- Every test signs up its own user through `/api/auth/signup` and creates its data through `/api/graphql` ([fixtures.ts](e2e/fixtures.ts)), so tests are independent and run in parallel. Test users use the `@e2e.test` email domain.
+- A test fails if the browser logs an uncaught exception or a console error, such as a hydration mismatch. Failed HTTP responses are ignored, because some tests trigger them on purpose (wrong password, 404 page).
+- CI runs them against `docker compose up --build` (production builds) on every change to `apps/api` or `apps/web`. On failure it uploads the HTML report and traces as a `playwright-report` artifact.
+
+Run them against the Docker stack, with the rate limits raised (all requests reach the API from the web container's IP, so parallel tests share one bucket):
+
+```bash
+# repository root
+THROTTLE_LIMIT=100000 THROTTLE_AUTH_LIMIT=100000 docker compose up -d --build
+# apps/web
+npx playwright install chromium   # once
+npm run test:e2e
+npx playwright show-report        # after a failure: screenshots and traces
+```
+
+In PowerShell, set the variables first: `$env:THROTTLE_LIMIT=100000; $env:THROTTLE_AUTH_LIMIT=100000; docker compose up -d --build`. They stay set for that terminal session; `Remove-Item Env:THROTTLE_LIMIT, Env:THROTTLE_AUTH_LIMIT` restores the defaults.
+
+To test a dev server or another port, set `E2E_BASE_URL` (default `http://localhost:3000`). Against `npm run dev`, raise `THROTTLE_LIMIT` and `THROTTLE_AUTH_LIMIT` in `apps/api/.env` instead.
 
 ## Docker
 
