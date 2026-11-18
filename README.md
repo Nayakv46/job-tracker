@@ -1,6 +1,6 @@
 # Job Tracker
 
-Full-stack app for tracking job applications: kanban board, filterable list, notes and a statistics dashboard. Built with Next.js, NestJS, GraphQL, Prisma and PostgreSQL, deployed with Docker and Kubernetes (AWS infrastructure with Terraform planned).
+Full-stack app for tracking job applications: kanban board, filterable list, notes and a statistics dashboard. Built with Next.js, NestJS, GraphQL, Prisma and PostgreSQL, deployed with Docker and Kubernetes, with AWS infrastructure (EKS, RDS) in Terraform.
 
 | Folder                     | Description                                     |
 | -------------------------- | ----------------------------------------------- |
@@ -8,7 +8,7 @@ Full-stack app for tracking job applications: kanban board, filterable list, not
 | [`apps/web`](apps/web)     | Next.js frontend ([README](apps/web/README.md))   |
 | [`docs`](docs/PROJECT.md)  | Technical overview                              |
 | [`infra/k8s`](infra/k8s)   | Kubernetes manifests, Kustomize ([README](infra/k8s/README.md)) |
-| `infra/terraform`          | AWS infrastructure (planned)                    |
+| [`infra/terraform`](infra/terraform) | AWS infrastructure: VPC, EKS, RDS, ECR ([README](infra/terraform/README.md)) |
 
 ## Run the full stack with Docker
 

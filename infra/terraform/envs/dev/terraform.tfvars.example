@@ -1,0 +1,11 @@
+# Copy to terraform.tfvars (git-ignored) and adjust
+github_repository = "your-github-user/job-tracker"
+
+# Lock the Kubernetes API down to your IP if you don't deploy from GitHub-hosted runners
+# cluster_endpoint_public_access_cidrs = ["203.0.113.10/32"]
+
+# Additional cluster admins, e.g. an SSO role
+# cluster_admin_arns = ["arn:aws:iam::123456789012:role/AWSReservedSSO_AdministratorAccess_abc123"]
+
+# Cheaper nodes that can be interrupted
+# node_capacity_type = "SPOT"
