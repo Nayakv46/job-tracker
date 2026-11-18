@@ -18,7 +18,9 @@ npm run build
 
 Tests
 
-TODO
+API (/apps/api): npm test (unit), npm run test:e2e (needs the database: docker compose up -d db)
+Web (/apps/web): npm run test:e2e (Playwright, needs the full stack, see apps/web/README.md)
+Terraform (/infra/terraform/envs/dev): terraform init -backend=false && terraform test
 
 Conventions
 
