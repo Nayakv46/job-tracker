@@ -19,3 +19,8 @@ infra/k8s/**/secrets/*.env
 backend.hcl
 *.tfplan
 tfplan
+
+# Playwright
+playwright-report/
+test-results/
+blob-report/
