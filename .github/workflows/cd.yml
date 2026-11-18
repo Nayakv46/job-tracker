@@ -1,0 +1,114 @@
+name: CD
+
+# Deploys main to EKS after CI passes on it. Runs only when the repository variable
+# AWS_DEPLOY_ROLE_ARN is set (terraform output github_actions_role_arn), so merges
+# don't fail while the AWS environment is torn down.
+#
+# Repository variables (Settings → Secrets and variables → Actions → Variables):
+#   AWS_DEPLOY_ROLE_ARN  required, enables deploys
+#   AWS_REGION           optional, default eu-central-1
+#   EKS_CLUSTER_NAME     optional, default job-tracker-dev
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # OIDC token for AWS
+
+# One deploy at a time; a newer commit waits instead of cancelling a rollout halfway
+concurrency:
+  group: deploy-eks
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'eu-central-1' }}
+  EKS_CLUSTER_NAME: ${{ vars.EKS_CLUSTER_NAME || 'job-tracker-dev' }}
+  # The commit CI tested (workflow_run) or the dispatched one
+  COMMIT_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+jobs:
+  deploy:
+    # - The IAM role only trusts main, so manual runs from other branches can't deploy.
+    # - workflow_run must come from a push to this repository: `branches: [main]` alone
+    #   also matches pull requests from a fork's main branch, whose code must never run
+    #   with AWS credentials.
+    if: >-
+      vars.AWS_DEPLOY_ROLE_ARN != '' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'workflow_dispatch' || (
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event == 'push' &&
+        github.event.workflow_run.head_repository.full_name == github.repository))
+    runs-on: ubuntu-24.04 # ships the AWS CLI, kubectl and kustomize
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.COMMIT_SHA }}
+
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: aws-actions/amazon-ecr-login@7290e214a610b32bc0eef81748948b6d466a8783 # v2.2.0
+        id: ecr
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      # ECR tags are immutable: the commit SHA identifies the image
+      - name: Build and push api
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: apps/api
+          target: runtime
+          push: true
+          tags: ${{ steps.ecr.outputs.registry }}/job-tracker/api:${{ env.COMMIT_SHA }}
+          cache-from: type=gha,scope=api
+
+      - name: Build and push api-migrate
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: apps/api
+          target: migrate
+          push: true
+          tags: ${{ steps.ecr.outputs.registry }}/job-tracker/api-migrate:${{ env.COMMIT_SHA }}
+          cache-from: type=gha,scope=api-migrate
+
+      - name: Build and push web
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: apps/web
+          target: runtime
+          push: true
+          tags: ${{ steps.ecr.outputs.registry }}/job-tracker/web:${{ env.COMMIT_SHA }}
+          cache-from: type=gha,scope=web
+
+      # The role can only describe the cluster and edit the job-tracker namespace
+      - name: Deploy
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+        run: |
+          aws eks update-kubeconfig --name "$EKS_CLUSTER_NAME" --region "$AWS_REGION"
+          cd infra/k8s/overlays/eks
+          kustomize edit set image \
+            job-tracker-api="$REGISTRY/job-tracker/api:$COMMIT_SHA" \
+            job-tracker-api-migrate="$REGISTRY/job-tracker/api-migrate:$COMMIT_SHA" \
+            job-tracker-web="$REGISTRY/job-tracker/web:$COMMIT_SHA"
+          kubectl apply -k .
+
+      - name: Wait for the rollout
+        run: |
+          kubectl -n job-tracker rollout status deployment/api --timeout=10m
+          kubectl -n job-tracker rollout status deployment/web --timeout=10m
+
+      - name: Summary
+        if: success()
+        run: |
+          host=$(kubectl -n job-tracker get ingress job-tracker -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+          echo "Deployed \`$COMMIT_SHA\` to \`$EKS_CLUSTER_NAME\`: http://$host" >> "$GITHUB_STEP_SUMMARY"
