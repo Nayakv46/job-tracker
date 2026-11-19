@@ -31,7 +31,7 @@ Internet ──► ALB (public subnets) ──► web pods ──► api pods �
   - Because Terraform can't read the values back, they are only (re)written when `secrets_version` changes.
 - **ECR:** immutable tags (deploy by git SHA), scan on push, lifecycle policy that keeps the last 20 images.
 - **GitHub Actions:**
-  - The deploy role's trust policy only accepts `repo:<github_repository>:ref:refs/heads/main`.
+  - The deploy role's trust policy only accepts `repo:<github_repository>:ref:refs/heads/main` (see [Continuous deployment](#continuous-deployment) for repositories whose subject carries IDs).
   - In AWS, it can push to the three repositories and describe the cluster.
   - In the cluster it has no EKS access policy. It's mapped to the `job-tracker-deployers` group, which gets the `edit` role in the `job-tracker` namespace only.
 - **State:** S3 bucket with versioning, encryption, blocked public access and TLS-only access. Locking uses S3 lock files (`use_lockfile`), so there's no DynamoDB table.
@@ -120,7 +120,8 @@ kubectl -n job-tracker run seed --rm -i --restart=Never --image=$IMAGE --overrid
 After the first apply, let GitHub Actions deploy every commit on `main` that passes CI ([`cd.yml`](../../.github/workflows/cd.yml)). It does steps 3 and 4 above using the `github-actions` IAM role.
 
 1. In the repository settings (Settings → Secrets and variables → Actions → Variables), set `AWS_DEPLOY_ROLE_ARN` to `terraform output -raw github_actions_role_arn`. `AWS_REGION` and `EKS_CLUSTER_NAME` are optional and default to `eu-central-1` and `job-tracker-dev`.
-2. Push to `main`, or start the CD workflow manually from the Actions tab (on `main`; the role doesn't trust other branches).
+2. Check that `github_repository` matches the repository in GitHub's OIDC subject. Tokens of newer repositories carry the immutable owner and repository IDs, e.g. `repo:octo-org@12345678/job-tracker@987654321:ref:refs/heads/main`, and then `github_repository` must be `octo-org@12345678/job-tracker@987654321`. If the deploy fails with `Not authorized to perform sts:AssumeRoleWithWebIdentity`, CloudTrail shows the subject GitHub sent: the `userName` of the `AssumeRoleWithWebIdentity` event with error `AccessDenied`.
+3. Push to `main`, or start the CD workflow manually from the Actions tab (on `main`; the role doesn't trust other branches).
 
 Delete the variable before `terraform destroy`, so merges don't try to deploy to a cluster that's gone. Seeding demo data stays a manual step.
 
