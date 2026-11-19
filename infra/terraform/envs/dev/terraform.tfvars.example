@@ -1,5 +1,8 @@
 # Copy to terraform.tfvars (git-ignored) and adjust
+# Must match the repository in GitHub's OIDC subject. Tokens of newer repositories carry
+# immutable owner and repository IDs; see "Continuous deployment" in the README.
 github_repository = "your-github-user/job-tracker"
+# github_repository = "your-github-user@12345678/job-tracker@987654321"
 
 # Lock the Kubernetes API down to your IP if you don't deploy from GitHub-hosted runners
 # cluster_endpoint_public_access_cidrs = ["203.0.113.10/32"]
