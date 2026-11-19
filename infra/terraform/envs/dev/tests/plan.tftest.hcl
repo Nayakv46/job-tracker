@@ -105,3 +105,12 @@ run "rejects_invalid_repository" {
 
   expect_failures = [var.github_repository]
 }
+
+# Subjects with immutable IDs: repo:owner@123/name@456:ref:refs/heads/main
+run "accepts_repository_with_ids" {
+  command = plan
+
+  variables {
+    github_repository = "example@123/job-tracker@456"
+  }
+}

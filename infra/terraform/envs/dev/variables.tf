@@ -54,12 +54,12 @@ variable "db_instance_class" {
 }
 
 variable "github_repository" {
-  description = "GitHub repository (owner/name) whose workflows may deploy"
+  description = "GitHub repository whose workflows may deploy, as it appears in the OIDC subject: owner/name, or owner@ID/name@ID for repositories whose tokens carry immutable IDs"
   type        = string
 
   validation {
-    condition     = can(regex("^[^/]+/[^/]+$", var.github_repository))
-    error_message = "github_repository must look like owner/name."
+    condition     = can(regex("^[A-Za-z0-9-]+(@[0-9]+)?/[A-Za-z0-9._-]+(@[0-9]+)?$", var.github_repository))
+    error_message = "github_repository must look like owner/name or owner@123/name@456."
   }
 }
 
