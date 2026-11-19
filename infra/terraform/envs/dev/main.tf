@@ -98,4 +98,9 @@ module "k8s_platform" {
   app_namespace        = local.app_namespace
   deployers_group      = local.deployers_group
   secrets_manager_arns = [aws_secretsmanager_secret.api.arn]
+
+  # Install the controllers only after every EKS add-on is active. The Load Balancer
+  # Controller registers a fail-closed webhook for Services; while its pods aren't ready
+  # yet, it rejects the Services that CoreDNS and metrics-server create.
+  depends_on = [module.eks]
 }
