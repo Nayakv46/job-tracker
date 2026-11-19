@@ -33,6 +33,9 @@ resource "aws_db_parameter_group" "this" {
   parameter {
     name  = "rds.force_ssl"
     value = "1"
+    # RDS reports this parameter as pending-reboot; leaving the default ("immediate")
+    # shows a change on every plan. A new instance starts with the value anyway.
+    apply_method = "pending-reboot"
   }
 
   lifecycle {

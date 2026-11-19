@@ -37,8 +37,9 @@ variable "cluster_admin_arns" {
 }
 
 variable "node_instance_types" {
-  type    = list(string)
-  default = ["t3.medium"]
+  description = "Accounts on the AWS free plan can only launch Free Tier eligible types, e.g. [\"c7i-flex.large\"]"
+  type        = list(string)
+  default     = ["t3.medium"]
 }
 
 variable "node_capacity_type" {

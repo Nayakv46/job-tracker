@@ -43,3 +43,14 @@ patches:
           alb.ingress.kubernetes.io/target-type: ip
           alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
           alb.ingress.kubernetes.io/healthcheck-path: /login
+  # Served over plain HTTP on the ALB hostname, where browsers drop Secure cookies.
+  # Remove once the Ingress has an HTTPS listener (ACM certificate).
+  - target:
+      kind: Deployment
+      name: web
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/env/-
+        value:
+          name: SECURE_COOKIES
+          value: "false"
