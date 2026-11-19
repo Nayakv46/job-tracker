@@ -59,6 +59,8 @@ Set an [AWS Budget](https://console.aws.amazon.com/billing/home#/budgets) alert,
 
 ## Deploy
 
+This is the first-time setup. Once it's done and CD is set up, [DEMO.md](DEMO.md) is a shorter runbook to bring the environment up for a demo and tear it down again.
+
 **1. State bucket (once per account)**
 
 ```bash
