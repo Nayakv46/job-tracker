@@ -8,7 +8,7 @@ Full-stack app for tracking job applications: kanban board, filterable list, not
 | [`apps/web`](apps/web)     | Next.js frontend ([README](apps/web/README.md))   |
 | [`docs`](docs/PROJECT.md)  | Technical overview                              |
 | [`infra/k8s`](infra/k8s)   | Kubernetes manifests, Kustomize ([README](infra/k8s/README.md)) |
-| [`infra/terraform`](infra/terraform) | AWS infrastructure: VPC, EKS, RDS, ECR ([README](infra/terraform/README.md)) |
+| [`infra/terraform`](infra/terraform) | AWS infrastructure: VPC, EKS, RDS, ECR ([README](infra/terraform/README.md), [demo runbook](infra/terraform/DEMO.md)) |
 
 ## Run the full stack with Docker
 
