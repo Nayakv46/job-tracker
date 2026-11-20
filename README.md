@@ -10,6 +10,52 @@ Full-stack app for tracking job applications: kanban board, filterable list, not
 | [`infra/k8s`](infra/k8s)   | Kubernetes manifests, Kustomize ([README](infra/k8s/README.md)) |
 | [`infra/terraform`](infra/terraform) | AWS infrastructure: VPC, EKS, RDS, ECR ([README](infra/terraform/README.md), [demo runbook](infra/terraform/DEMO.md)) |
 
+## Architecture
+
+```mermaid
+flowchart TB
+  user([Browser])
+  dev([Developer])
+
+  subgraph github [GitHub Actions]
+    ci[CI<br/>lint, tests, builds]
+    cd[CD]
+  end
+
+  subgraph aws [AWS · eu-central-1 · created with Terraform]
+    subgraph vpc [VPC · 2 availability zones]
+      alb[Application Load Balancer<br/>public subnets]
+      subgraph eks [EKS cluster · private subnets]
+        web[web pods<br/>Next.js]
+        api[api pods<br/>NestJS GraphQL]
+        lbc[AWS Load Balancer<br/>Controller]
+        eso[External Secrets<br/>Operator]
+      end
+      rds[(RDS PostgreSQL<br/>database subnets)]
+    end
+    ecr[ECR<br/>api, api-migrate, web]
+    sm[Secrets Manager]
+  end
+
+  user -- HTTP --> alb --> web
+  web -- "GraphQL + token" --> api
+  api -- TLS --> rds
+  lbc -. creates .-> alb
+  sm -. "DB URL, JWT secrets" .-> eso
+  eso -. Kubernetes Secret .-> api
+
+  dev -- pull request --> ci
+  ci -- passes on main --> cd
+  cd -- "push images (OIDC role)" --> ecr
+  cd -- kubectl apply --> eks
+  ecr -. pull .-> eks
+```
+
+- **The browser only talks to Next.js.** Tokens live in httpOnly cookies; the Next.js server attaches them to GraphQL requests and forwards them to the API, which is not exposed outside the cluster.
+- **Pods get AWS access through EKS Pod Identity:** the Load Balancer Controller turns the Ingress into the ALB, and External Secrets copies the app's secret from Secrets Manager into the cluster. Database migrations run in an init container of the API pods.
+- **No AWS keys in GitHub:** CD assumes an IAM role through OIDC that only trusts `main`. It can push to ECR and deploy to the `job-tracker` namespace, nothing else.
+- Locally, [`docker-compose.yml`](docker-compose.yml) runs the same images with PostgreSQL in a container.
+
 ## Run the full stack with Docker
 
 ```bash
