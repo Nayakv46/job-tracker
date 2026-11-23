@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { Toaster } from "sonner";
 import "./globals.css";
+import { Toaster } from "@/components/ui/shadcn/sonner";
 import { ThemeProvider } from "@/components/ui/shadcn/theme-provider";
 import { QueryProvider } from "@/providers/QueryProvider";
 
@@ -16,9 +16,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <QueryProvider>
           <ThemeProvider storageKey="job-tracker-theme">
             {children}
+            <Toaster position="bottom-right" duration={5000} closeButton />
           </ThemeProvider>
         </QueryProvider>
-        <Toaster position="bottom-right" duration={5000} closeButton />
       </body>
     </html>
   );
